@@ -166,3 +166,4 @@ cython_debug/
 *.7z
 data/
 *.tar
+*.txt
