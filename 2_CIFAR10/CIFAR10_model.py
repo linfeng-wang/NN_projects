@@ -179,3 +179,8 @@ fig.show()
 a = torch.zeros(1, 2, 3, 4, 5, 6)
 b = a.view(a.shape[:2], -1, a.shape[5:])
 # %%
+# from torchviz import make_dot
+# x = torch.randn(2, 4, 56).to(device)
+# m = model_torch_simple.raw_seq_model().to(device)
+# y = m(x)
+# make_dot(y, params=dict(list(m.named_parameters()))).render("cnn_torchviz", format="png")

@@ -128,10 +128,6 @@ def pad_features(reviews_int, max_len=max_len):
 
 
 #%%
-for x,y in train_loader:
-    print(x.shape)
-    break
-#%%
 class nlp_dataset(Dataset):
     def __init__(self, df, transform=None):
         self.df = df
@@ -154,8 +150,8 @@ class nlp_dataset(Dataset):
 
 train_dataset = nlp_dataset(df)
 train_data, val_data = random_split(train_dataset, [int(len(train_dataset)*0.8), len(train_dataset)-int(len(train_dataset)*0.8)])
-#%%
 
+#%%
 class nlp_model(nn.Module):
     def __init__(self, input_size = 50, hidden_size = 128, output_size = 2):
         super(nlp_model, self).__init__()
@@ -164,31 +160,95 @@ class nlp_model(nn.Module):
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
     def forward(self, input_tensor, hidden_tensor):
-        for i in range(len(input_tensor)):
-            # print(input_tensor[i].size(), hidden_tensor.size())
-            combinations = torch.cat((input_tensor[i], hidden_tensor), 1)
-            # print(combinations.size())
-            hidden = self.i2h(combinations)
-            output = self.i2o(combinations)
-            output = self.softmax(output)
+        # print(input_tensor[i].size(), hidden_tensor.size())
+        # input_tensor = torch.tensor(input_tensor,requires_grad=True)
+        # hidden_tensor = torch.tensor(hidden_tensor,requires_grad=True)
+        combinations = torch.cat((input_tensor, hidden_tensor), 1)
+        combinations = combinations.to(torch.float32)
+        # combinations = torch.tensor(combinations,requires_grad=True)
+        # print(combinations.size())
+        hidden = self.i2h(combinations)
+        output = self.i2o(combinations)
+        output = self.softmax(output)
+        # print('output_size:',output.size())
         return output, hidden
     
     def init_hidden(self):
-        return torch.zeros(54, self.hidden_size)
+        return torch.zeros(1, self.hidden_size,)
 
 rnn = nlp_model()
 
-        
+
+ #%%
+# input_size = 50 
+# hidden_size = 50
+# output_size = 2
+# for input_tensor,y in train_loader:
+#     input_tensor = input_tensor.permute(1,0,2)
+#     # print(input_tensor.size())
+    
+#     hidden_size = hidden_size
+#     i2h = nn.Linear(input_size + hidden_size, hidden_size)
+#     i2o = nn.Linear(input_size + hidden_size, output_size)
+#     softmax = nn.LogSoftmax(dim=1)
+    
+#     for i in range(len(input_tensor)):
+#         # print(input_tensor[i].size(), hidden_tensor.size())
+#         combinations = torch.cat((input_tensor[i], hidden_tensor), 1)
+#         # print(combinations.size())
+
+#         # combinations = combinations.transpose(0, 1)
+#         # print(combinations.size())
+
+#         combinations = combinations.to(torch.float32)
+#         # print(combinations)
+#         # print(combinations.size())
+#         # print(combinations.size())
+#         hidden = i2h(combinations)
+#         output = i2o(combinations)
+#         output = softmax(output)
+#     print(output.size())
+#     break 
 
 #%%
-lr = 0.001
+# class nlp_model(nn.Module):
+#     def __init__(self, input_size = 50, hidden_size = 50, output_size = 2):
+#         super(nlp_model, self).__init__()
+#         self.hidden_size = hidden_size
+#         self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+#         self.i2o = nn.Linear(input_size + hidden_size, output_size)
+#         self.softmax = nn.LogSoftmax(dim=1)
+#     def forward(self, input_tensor, hidden_tensor):
+#         for i in range(len(input_tensor)):
+#             # print(input_tensor[i].size(), hidden_tensor.size())
+#             combinations = torch.cat((input_tensor[i], hidden_tensor), 1)
+#             # print(combinations.size())
+#             hidden = self.i2h(combinations)
+#             output = self.i2o(combinations)
+#             output = self.softmax(output)
+#         print('output_size:',output.size())
+#         return output
+    
+#     def init_hidden(self):
+#         return torch.zeros(self.hidden_size,50)
+
+# rnn = nlp_model()
+#%%
+lr = 0.005
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(rnn.parameters(), lr=lr)
-batch_size = 128
+batch_size = 1
 n_epoch = 20
 train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(dataset=val_data, batch_size=batch_size, shuffle=True)
 
+#%%
+# c = 0
+# while c <= 2:
+for x, y in train_loader:
+    print(x.size())
+    print(y.size())
+    break
 #%%
 train_epoch_loss = []
 test_epoch_loss = []
@@ -201,6 +261,7 @@ for e in tqdm(range(1, n_epoch+1)):
         
         # print(len(x))
         x_batch = x.to(device)
+        x_batch = x.squeeze(0)
         # print('x_batch:', x_batch.size())
         y_batch = y.to(device)
         # y_batch = one_hot_torch(y).to(device)
@@ -212,26 +273,31 @@ for e in tqdm(range(1, n_epoch+1)):
 # For example, if you have a convolutional layer with 64 output channels, 3 input channels, and a kernel size of 3x3, the weight parameters would have a dimension of (64, 3, 3, 3)
         # print(x_batch.size())
         # print('x_batch.size():',x_batch.size())
-        hidden_tensor = rnn.init_hidden()
-        pred = rnn(x_batch.float(),hidden_tensor)
-        print(pred)
+        hidden = rnn.init_hidden()
+        for i in range(x_batch.size()[0]):
+            output, hidden = rnn(x_batch[i].unsqueeze(0), hidden)
 
-        loss_train = criterion(torch.tensor(pred), y_batch)
+        loss_train = criterion(output, y_batch)
         train_batch_loss.append(loss_train)
+        # loss_train = torch.tensor(loss_train, requires_grad=True)
+        optimizer.zero_grad()
         loss_train.backward()
         optimizer.step()
-        optimizer.zero_grad()
     train_epoch_loss.append(torch.mean(torch.stack(train_batch_loss)).detach().numpy())
     with torch.no_grad():
         # print('test')
         for x, y in val_loader:
             x_batch = x.to(device)
+            x_batch = x.squeeze(0)
             y_batch = torch.tensor(y).to(device)
             # print(x_batch.size())
+            hidden = rnn.init_hidden()
+            for i in range(x_batch.size()[0]):
+                output, hidden = rnn(x_batch[i].unsqueeze(0), hidden)
+
             # y_batch = torch.Tensor.float(y).to(device)
-            # x_batch = x_batch.permute(0, 3, 1, 2).to(device)
-            pred = rnn(x_batch.float())
-            loss_test = criterion(pred, y_batch)
+            # x_batch = wha.to(device)
+            loss_test = criterion(output, y_batch)
             
             test_batch_loss.append(loss_test)
         test_epoch_loss.append(torch.mean(torch.stack(test_batch_loss)).detach().numpy())
