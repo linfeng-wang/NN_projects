@@ -179,7 +179,7 @@ class nlp_model(nn.Module):
 rnn = nlp_model()
 
 
- #%%
+#%%
 # input_size = 50 
 # hidden_size = 50
 # output_size = 2
@@ -250,6 +250,21 @@ for x, y in train_loader:
     print(y.size())
     break
 #%%
+for x,y in train_loader:
+    print(x.squeeze(0).size())
+    print(x.size())
+    x_batch = x.squeeze(0)
+    hidden = rnn.init_hidden()
+    print(x_batch.size())
+    print(hidden.size())
+    print(x_batch[0].size())
+    combinations = torch.cat((x_batch[0].unsqueeze(0), hidden), 1)
+    print(combinations.size())
+    # for i in range(x_batch.size()[0]):
+    #     print(x_batch[i].unsqueeze(0))
+    break
+#%%
+
 train_epoch_loss = []
 test_epoch_loss = []
 
@@ -261,7 +276,7 @@ for e in tqdm(range(1, n_epoch+1)):
         
         # print(len(x))
         x_batch = x.to(device)
-        x_batch = x.squeeze(0)
+        x_batch = x_batch.squeeze(0)
         # print('x_batch:', x_batch.size())
         y_batch = y.to(device)
         # y_batch = one_hot_torch(y).to(device)

@@ -202,3 +202,8 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=7, gamma=0.1)
 model_conv = train_model(model_conv, criterion, optimizer_conv, exp_lr_scheduler, num_epochs=25)
 
 #%%
+# # from torchviz import make_dot
+# x = torch.randn(2, 4, 56).to(device)
+# m = model_torch_simple.raw_seq_model().to(device)
+# y = m(x)
+# make_dot(y, params=dict(list(m.named_parameters()))).render("cnn_torchviz", format="png")
