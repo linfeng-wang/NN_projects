@@ -38,6 +38,7 @@ import argparse
 
 import numpy as np
 from PIL import Image
+import torch.nn.init as init
 
 #%%
 np.random.seed(3)
@@ -153,12 +154,16 @@ train_data, val_data = random_split(train_dataset, [int(len(train_dataset)*0.8),
 
 #%%
 class nlp_model(nn.Module):
-    def __init__(self, input_size = 50, hidden_size = 128, output_size = 2):
+    def __init__(self, input_size = 50, hidden_size = 128, output_size = 1):
         super(nlp_model, self).__init__()
         self.hidden_size = hidden_size
         self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
+        
+        init.xavier_uniform_(self.i2h.weight)
+        init.xavier_uniform_(self.i2o.weight)
+
     def forward(self, input_tensor, hidden_tensor):
         # print(input_tensor[i].size(), hidden_tensor.size())
         # input_tensor = torch.tensor(input_tensor,requires_grad=True)
@@ -167,9 +172,10 @@ class nlp_model(nn.Module):
         combinations = combinations.to(torch.float32)
         # combinations = torch.tensor(combinations,requires_grad=True)
         # print(combinations.size())
-        hidden = self.i2h(combinations)
-        output = self.i2o(combinations)
-        output = self.softmax(output)
+        hidden = F.relu(self.i2h(combinations))
+        # print(combinations)
+        output = F.sigmoid(self.i2o(combinations))
+        # output = self.softmax(output)
         # print('output_size:',output.size())
         return output, hidden
     
@@ -234,9 +240,10 @@ rnn = nlp_model()
 
 # rnn = nlp_model()
 #%%
-lr = 0.005
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(rnn.parameters(), lr=lr)
+lr = 0.0001
+criterion = nn.MSELoss()
+# criterion = nn.NLLLoss()
+optimizer = optimizer = torch.optim.SGD(rnn.parameters(), lr=lr)
 batch_size = 1
 n_epoch = 20
 train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
@@ -263,8 +270,8 @@ for x,y in train_loader:
     # for i in range(x_batch.size()[0]):
     #     print(x_batch[i].unsqueeze(0))
     break
-#%%
 
+#%%
 train_epoch_loss = []
 test_epoch_loss = []
 
@@ -277,8 +284,11 @@ for e in tqdm(range(1, n_epoch+1)):
         # print(len(x))
         x_batch = x.to(device)
         x_batch = x_batch.squeeze(0)
+        # print(x_batch)
         # print('x_batch:', x_batch.size())
         y_batch = y.to(device)
+        # y_batch = y.long()
+        y_batch = y.float()
         # y_batch = one_hot_torch(y).to(device)
         # print('batch y size before flatten:',y_batch.size())
         # y_batch = y_batch.flatten()
@@ -291,13 +301,34 @@ for e in tqdm(range(1, n_epoch+1)):
         hidden = rnn.init_hidden()
         for i in range(x_batch.size()[0]):
             output, hidden = rnn(x_batch[i].unsqueeze(0), hidden)
-
+        output = output.squeeze(0)
+        output = output.float()
+        # print('==output==')
+        # print(output)
+        # # print('==hidden==')
+        # # print(hidden)
+        # print('==y_batch==')
+        # print(y_batch)
+        
         loss_train = criterion(output, y_batch)
         train_batch_loss.append(loss_train)
-        # loss_train = torch.tensor(loss_train, requires_grad=True)
+        
+        # print('==loss==')
+        # print(loss_train)
+        # loss_train = loss_train.squeeze().requires_grad_()
+        
+
+        
         optimizer.zero_grad()
         loss_train.backward()
         optimizer.step()
+
+    params = []
+    for param in rnn.parameters():
+        params.append(param.view(-1))
+    params = torch.cat(params)
+    print(params)
+    
     train_epoch_loss.append(torch.mean(torch.stack(train_batch_loss)).detach().numpy())
     with torch.no_grad():
         # print('test')
@@ -305,11 +336,14 @@ for e in tqdm(range(1, n_epoch+1)):
             x_batch = x.to(device)
             x_batch = x.squeeze(0)
             y_batch = torch.tensor(y).to(device)
+            # y_batch = y_batch.long()
+            y_batch = y_batch.float()
             # print(x_batch.size())
             hidden = rnn.init_hidden()
             for i in range(x_batch.size()[0]):
                 output, hidden = rnn(x_batch[i].unsqueeze(0), hidden)
-
+            output = output.squeeze(0)
+            output = output.float()
             # y_batch = torch.Tensor.float(y).to(device)
             # x_batch = wha.to(device)
             loss_test = criterion(output, y_batch)
@@ -345,4 +379,15 @@ for x, y in train_loader:
 
 
 
+# %%
+bla = torch.tensor([0.5060], dtype=torch.float32)
+ble = torch.tensor([0.],dtype=torch.long)
+
+loss_bl = criterion(bla, ble)
+
+# %%
+loss_bl.float()
+# %%
+for x, y in train_loader:
+    print(x, y)
 # %%
