@@ -46,13 +46,30 @@ import argparse
 #     transform = transforms.Compose([transforms.ToTensor(),
 #                                     transforms.Normalize((0.1307),(0.3081,))])),
 #     batch_size = 64, shuffle = True)
+# python mnist_model.py -lr 0.001 -dr 0.2 -e 20
+epoch = 20
+batch_size = 128
+lr = 0.003
+dr = 1
 
+torch.manual_seed(123)
+
+parser = argparse.ArgumentParser(description='Isoniazid prediction model using KatG sequences as input',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("-lr", "--learning_rate", help='Learning rate for the model(between 10e-6 and 1)',default=0.001)
+parser.add_argument("-dr", "--dropout_rate", help='Dropout rate for hte model layers (between 0 and 1)',default=0.2)
+parser.add_argument("-e", "--epoch", help='Dropout rate for hte model layers (between 0 and 1)',default=10)
+
+args = parser.parse_args()
+
+lr = float(args.learning_rate)
+dr = float(args.dropout_rate)
+e = int(args.epoch)
 # %%
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-train_data = pd.read_csv('/Users/linfengwang/Github/NN_projects/1_MNIST/data/MNIST/digit-recognizer/train.csv')
-test_data = pd.read_csv('/Users/linfengwang/Github/NN_projects/1_MNIST/data/MNIST/digit-recognizer/test.csv')
+train_data = pd.read_csv('/Users/linfengwang/Codes/NN_projects/1_MNIST/data/MNIST/digit-recognizer/train.csv')
+test_data = pd.read_csv('/Users/linfengwang/Codes/NN_projects/1_MNIST/data/MNIST/digit-recognizer/test.csv')
 
 train_data_x = train_data.iloc[:,1:]
 train_data_list = []
@@ -101,27 +118,57 @@ def one_hot_torch(number):
 
 # print(one_hot_torch([0,1,2,3]))
 #%%
+# class Model(nn.Module):
+#     def __init__(self, input=784, hidden=20, out=10, dropout_rate=dr):
+#         super(Model, self).__init__()
+#         self.lin1 = nn.Linear(input, hidden)
+#         self.lin2 = nn.Linear(hidden, hidden)
+#         self.fc = nn.Linear(hidden, out)
+        
+#     def forward(self, x):
+#         x = F.relu(self.lin1(x))
+#         x = F.relu(self.lin2(x))
+#         # x = F.max_pool2d(x, kernel_size = 2)
+#         # x = x.squeeze(dim = -1)
+#         x = self.fc(x)
+#         return F.sigmoid(x)
+    
+# import torch.nn.functional as F
+
 class Model(nn.Module):
-    def __init__(self, input=784, hidden=20, out=10, dropout_rate=0.2):
+    def __init__(self, input=784, hidden=30, out=10, dropout_rate=dr):
         super(Model, self).__init__()
         self.lin1 = nn.Linear(input, hidden)
+        self.dropout1 = nn.Dropout(dropout_rate)  # Add dropout after the first hidden layer
         self.lin2 = nn.Linear(hidden, hidden)
+        self.dropout2 = nn.Dropout(dropout_rate)  # Add dropout after the second hidden layer
+        # self.lin3 = nn.Linear(hidden, hidden)
+        # self.dropout3 = nn.Dropout(dropout_rate) 
         self.fc = nn.Linear(hidden, out)
         
     def forward(self, x):
         x = F.relu(self.lin1(x))
+        x = self.dropout1(x)  # Apply dropout
         x = F.relu(self.lin2(x))
-        # x = F.max_pool2d(x, kernel_size = 2)
-        # x = x.squeeze(dim = -1)
+        x = self.dropout2(x)  # Apply dropout
+        # x = F.relu(self.lin3(x))
+        # x = self.dropout3(x)  # Apply dropout
         x = self.fc(x)
-        return F.sigmoid(x)
-    
+        return torch.sigmoid(x)
+
 train_linear_model = Model()
 
+# x = torch.randn(784).to(device)
+# m = train_linear_model.to(device)
+# y = m(x)
+# print(y)
+# make_dot(y, params=dict(list(m.named_parameters()))).render("mnist_torchviz", format="png")
+
+
 #Training hyperparameters
-epoch = 20
+epoch = e
 batch_size = 128
-lr = 0.001
+lr = lr
 
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size)
 test_loader = DataLoader(dataset=val_dataset, batch_size=batch_size)
@@ -143,6 +190,7 @@ for e in tqdm(range(1, epoch+1)):
         pred = train_linear_model(x_batch.float())
         loss_train = criterion(pred, y_batch)
         train_batch_loss.append(loss_train)
+        loss_train.requires_grad_()
         loss_train.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -162,6 +210,8 @@ for e in tqdm(range(1, epoch+1)):
     print(f"Training loss: {torch.mean(torch.stack(train_batch_loss)).detach().numpy()}")
     print(f"Validation loss: {torch.mean(torch.stack(test_batch_loss)).detach().numpy()}")
     print('==='*10)
+    
+    
 
 #%%
 fig, ax = plt.subplots()
@@ -172,7 +222,7 @@ ax.legend()
 ax.set_xlabel("Number of Epoch")
 ax.set_ylabel("Loss")
 ax.set_xticks(np.arange(0, epoch+1, 10))
-ax.set_title(f'Learning_rate:{lr}')
+ax.set_title(f'Model: Learning_rate:{lr},Learning_rate:{dr}')
 # ax_2 = ax.twinx()
 # ax_2.plot(history["lr"], "k--", lw=1)
 # ax_2.set_yscale("log")
@@ -180,5 +230,9 @@ ax.set_title(f'Learning_rate:{lr}')
 ax.grid(axis="x")
 fig.tight_layout()
 fig.show()
+fig.savefig(f"MNISTmodel_LR:{lr}_DR:{dr}_EP:{e}_loss.png")
+print('*************************************')
+print(f"Finished running for model with LR:{lr}-DR:{dr}-EP:{e}")
+print('*************************************')
 
 # %%

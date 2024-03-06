@@ -51,8 +51,8 @@ import argparse
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-train_data = pd.read_csv('/Users/linfengwang/Github/NN_projects/1_MNIST/data/MNIST/digit-recognizer/train.csv')
-test_data = pd.read_csv('/Users/linfengwang/Github/NN_projects/1_MNIST/data/MNIST/digit-recognizer/test.csv')
+train_data = pd.read_csv('/Users/linfengwang/Codes/NN_projects/1_MNIST/data/MNIST/digit-recognizer/train.csv')
+test_data = pd.read_csv('/Users/linfengwang/Codes/NN_projects/1_MNIST/data/MNIST/digit-recognizer/test.csv')
 
 train_data_x = train_data.iloc[:,1:]
 train_data_list = []
@@ -135,12 +135,14 @@ optimizer = torch.optim.Adam(train_linear_model.parameters(), lr=lr)
 train_epoch_loss = []
 test_epoch_loss = []
 
-for x in tqdm(range(1, epoch+1)):
+for e in tqdm(range(1, epoch+1)):
     train_linear_model.train()
     train_batch_loss = []
     test_batch_loss = []
     for x, y in train_loader:
-        pred = train_linear_model(torch.FloatTensor(x))
+        print(x)
+        # pred = train_linear_model(torch.FloatTensor(torch.stack(x)))
+        pred = train_linear_model(x.float())
         loss_train = loss(y - pred)
         train_batch_loss.append(loss_train)
         loss.backward()

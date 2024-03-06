@@ -52,6 +52,7 @@ from PIL import Image
 
 # %%
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.manual_seed(123)
 
 my_dict = {'frog': 0, 'truck': 1, 'deer': 2, 'automobile': 3, 'bird': 4, 'horse': 5, 'ship': 6, 'cat': 7, 'dog': 8, 'airplane': 9}
 def one_hot_torch(y):

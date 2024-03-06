@@ -167,3 +167,8 @@ cython_debug/
 data/
 *.tar
 *.txt
+6_Chatbot/
+9_Object Detection/
+10_StyleTransfer/
+7_Recommender/
+8_Forecasting/
